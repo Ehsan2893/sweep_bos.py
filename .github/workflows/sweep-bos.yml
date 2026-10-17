@@ -1,0 +1,34 @@
+name: sweep-bos
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "days of history"
+        default: "365"
+      trades:
+        description: "last N trades per coin"
+        default: "200"
+permissions:
+  contents: write
+concurrency:
+  group: sweep-bos
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - run: python sweep_bos.py ${{ github.event.inputs.days }} ${{ github.event.inputs.trades }}
+      - run: |
+          git config user.name "bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "sweep bos result"
+            for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
+          fi
